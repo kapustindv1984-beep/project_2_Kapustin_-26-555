@@ -58,6 +58,7 @@ def main():
                     headers = list(schema.keys())
 
                     t = PrettyTable()
+                    t.align = "l"
                     t.field_names = headers
                     for row in rows:
                         t.add_row(row)
