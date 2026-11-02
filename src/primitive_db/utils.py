@@ -6,6 +6,9 @@ from .constants import META_FILE, DATA_DIR
 def _ensure_dirs():
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
+def ensure_data_dir():
+    _ensure_dirs()
+
 def load_metadata():
     _ensure_dirs()
     path = Path(DATA_DIR) / META_FILE
