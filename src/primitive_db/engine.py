@@ -1,7 +1,9 @@
 import sys
-from .utils import ensure_data_dir
+from .utils import ensure_data_dir, load_metadata
 from .parser import parse_insert, parse_select, parse_update, parse_delete
 from .core import create_table, insert_row, select_rows, update_rows, delete_rows
+from prettytable import PrettyTable
+
 
 def main():
     ensure_data_dir()
@@ -20,7 +22,6 @@ def main():
             command = args[0].lower()
 
             if command == "create" and len(args) >= 4 and args[1] == "table":
-                # create table users name:str age:int
                 table_name = args[2]
                 schema_str = " ".join(args[3:])
                 schema = {}
@@ -43,12 +44,25 @@ def main():
                 try:
                     table_name, where_clause = parse_select(args)
                     rows = select_rows(table_name, where_clause)
+
                     if rows is None:
                         print("Таблица не найдена.")
-                    elif len(rows) == 0:
+                        continue
+
+                    if len(rows) == 0:
                         print("Пусто.")
-                    else:
-                        print(f"Всего строк: {len(rows)}")
+                        continue
+
+                    metadata = load_metadata()
+                    schema = metadata[table_name]["schema"]
+                    headers = list(schema.keys())
+
+                    t = PrettyTable()
+                    t.field_names = headers
+                    for row in rows:
+                        t.add_row(row)
+
+                    print(t)
                 except ValueError as e:
                     print(f"Error: {e}")
 
@@ -76,6 +90,7 @@ def main():
         except KeyboardInterrupt:
             print("\nExiting...")
             break
+
 
 if __name__ == "__main__":
     main()
