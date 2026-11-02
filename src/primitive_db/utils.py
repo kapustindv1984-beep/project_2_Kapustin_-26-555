@@ -1,9 +1,10 @@
 import json
 import os
 from pathlib import Path
-from .constants import META_FILE, DATA_DIR
+from .constants import DATA_DIR, META_FILE
 
 def _ensure_dirs():
+    print("DEBUG: _ensure_dirs called, DATA_DIR =", DATA_DIR)
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
 def ensure_data_dir():
