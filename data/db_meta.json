@@ -1,0 +1,9 @@
+{
+  "users": {
+    "schema": {
+      "name": "str",
+      "age": "int"
+    },
+    "indexes": []
+  }
+}

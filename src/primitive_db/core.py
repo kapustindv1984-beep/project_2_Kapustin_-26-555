@@ -2,16 +2,25 @@ from typing import Any, Dict, List, Optional
 from .constants import VALID_TYPES
 from .utils import load_metadata, save_metadata, load_table_data, save_table_data
 
-def create_table(table_name: str, schema: Dict[str, str]) -> bool:
-    if not all(t in VALID_TYPES for t in schema.values()):
-        return False
-    
+def create_table(table_name, schema):
+    from .constants import VALID_TYPES
+    from .utils import save_metadata, load_metadata
+
+    # Проверка типов колонок
+    for col, dtype in schema.items():
+        if dtype not in VALID_TYPES:
+            return f"Ошибка: тип '{dtype}' не поддерживается. Допустимы: {VALID_TYPES}"
+
     metadata = load_metadata()
+
     if table_name in metadata:
-        return False
-    
+        return f"Таблица '{table_name}' уже существует."
+
+    # Сохраняем схему и пустой список индексов
     metadata[table_name] = {"schema": schema, "indexes": []}
-    return save_metadata(metadata)
+    save_metadata(metadata)
+
+    return f"Таблица '{table_name}' создана."
 
 def insert_row(table_name: str, row: Dict[str, Any]) -> bool:
     metadata = load_metadata()
