@@ -1,5 +1,5 @@
 from .utils import ensure_data_dir, load_metadata
-from .parser import parse_insert, parse_select, parse_update, parse_delete
+from .parser import parse_insert, parse_select, parse_update, parse_delete, parse_create_table
 from .core import create_table, insert_row, select_rows, update_rows, delete_rows, drop_table
 from prettytable import PrettyTable
 
@@ -7,13 +7,13 @@ from prettytable import PrettyTable
 def main():
     ensure_data_dir()
     print("Primitive DB ready. Type 'exit' to quit.")
-    
+
     while True:
         try:
             cmd = input("> ").strip()
             if not cmd:
                 continue
-            
+
             if cmd.lower() == "exit":
                 print("Bye!")
                 break
@@ -21,35 +21,18 @@ def main():
             args = cmd.split()
             command = args[0].lower()
 
-            # ВАЖНО: здесь начинается главный if, без него elif не работает!
             if command == "create_table":
-                if len(args) < 3:
-                    print("Ошибка: недостаточно аргументов. Формат: create_table <имя> <col:type> ...")
-                    continue
-
-                table_name = args[1]
-                schema_str = " ".join(args[2:])
-                schema = {}
-                
-                for part in schema_str.split():
-                    if ":" in part:
-                        col, dtype = part.split(":", 1)
-                        schema[col] = dtype
-                    else:
-                        print(f"Ошибка: неверный формат колонки '{part}'. Ожидалось col:type")
-                        continue
-
-                if not schema:
-                    print("Ошибка: не удалось распознать ни одной колонки в формате col:type")
-                    continue
-
-                result = create_table(table_name, schema)
-                print(result)
+                try:
+                    table_name, schema = parse_create_table(args)
+                    result = create_table(table_name, schema)
+                    print(result)
+                except ValueError as e:
+                    print(f"Error: {e}")
 
             elif command == "insert":
                 try:
-                    table_name, values = parse_insert(args)
-                    result = insert_row(table_name, values)
+                    table_name, values_dict = parse_insert(args)
+                    result = insert_row(table_name, values_dict)
                     print(result)
                 except ValueError as e:
                     print(f"Error: {e}")
@@ -68,11 +51,10 @@ def main():
                         continue
 
                     metadata = load_metadata()
-                    # Защита на случай, если метаданные пусты
                     if not metadata or table_name not in metadata:
                         print("Метаданные таблицы недоступны.")
                         continue
-                        
+
                     schema = metadata[table_name]["schema"]
                     headers = list(schema.keys())
 
@@ -101,7 +83,7 @@ def main():
                     print(result)
                 except ValueError as e:
                     print(f"Error: {e}")
-            
+
             elif command == "list_tables":
                 metadata = load_metadata()
                 if not metadata:
@@ -119,7 +101,6 @@ def main():
                 if len(args) < 2:
                     print("Ошибка: укажите имя таблицы. Формат: drop_table <имя>")
                     continue
-                
                 table_name = args[1]
                 result = drop_table(table_name)
                 print(result)
@@ -127,11 +108,15 @@ def main():
             elif command == "help":
                 print("***Процесс работы с таблицей***")
                 print("Функции:")
-                print("<command> create_table <имя_таблицы> <столбец1:тип> <столбец2:тип> .. - создать таблицу")
-                print("<command> list_tables - показать список всех таблиц")
-                print("<command> drop_table <имя_таблицы> - удалить таблицу")
-                print("<command> exit - выход из программы")
-                print("<command> help - справочная информация")
+                print("create_table <имя_таблицы> <столбец1:тип> <столбец2:тип> ... - создать таблицу")
+                print("insert into <таблица> key1:value1 key2:value2 ... - вставить строку")
+                print("select from <таблица> [where key:value] - выбрать строки")
+                print("update <таблица> set key1:value1 ... where key:value - обновить строки")
+                print("delete from <таблица> where key:value - удалить строки")
+                print("list_tables - показать список таблиц")
+                print("drop_table <имя> - удалить таблицу")
+                print("help - справка")
+                print("exit - выход")
 
             else:
                 print("Неизвестная команда. Доступные: create_table, insert, select, update, delete, list_tables, drop_table, help, exit.")

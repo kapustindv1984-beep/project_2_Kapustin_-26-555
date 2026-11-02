@@ -1,113 +1,123 @@
 import re
-
-def _parse_value(val_str: str):
-    val_str = val_str.strip()
-    if val_str.lower() == "true":
-        return True
-    elif val_str.lower() == "false":
-        return False
-    elif re.match(r'^-?\d+$', val_str):
-        return int(val_str)
-    # Если строка в кавычках — убираем кавычки
-    elif (val_str.startswith('"') and val_str.endswith('"')) or \
-         (val_str.startswith("'") and val_str.endswith("'")):
-        return val_str[1:-1]
-    return val_str
+from typing import Dict, List, Any, Optional, Tuple
 
 
-def parse_insert(args: list) -> tuple:
-    # Ожидаем: insert into <table> values (<v1>, <v2>, ...)
-    if len(args) < 5 or args[1] != "into" or args[3] != "values":
-        raise ValueError("Некорректный синтаксис INSERT. Используйте: insert into table values (v1, v2, ...)")
+def parse_create_table(args: List[str]) -> Tuple[str, Dict[str, str]]:
+    if len(args) < 3:
+        raise ValueError("Недостаточно аргументов. Формат: create_table <имя> <col:type> ...")
+
+    table_name = args[1]
+    schema_str = args[2:]
+
+    schema = {}
+    for part in schema_str:
+        if ":" not in part:
+            raise ValueError(f"Неверный формат колонки '{part}'. Ожидалось col:type")
+        col, dtype = part.split(":", 1)
+        schema[col] = dtype
+
+    return table_name, schema
+
+
+def parse_insert(args: List[str]) -> Tuple[str, Dict[str, Any]]:
+    if len(args) < 4 or args[1] != "into":
+        raise ValueError("Неверный синтаксис INSERT. Формат: insert into <table> key:value ...")
 
     table_name = args[2]
-    values_str = " ".join(args[4:])
+    pairs = args[3:]
 
-    if not (values_str.startswith("(") and values_str.endswith(")")):
-        raise ValueError("Значения должны быть в скобках: (v1, v2, ...)")
-    values_str = values_str[1:-1].strip()
+    if not pairs:
+        raise ValueError("Нет данных для вставки. Формат: insert into <table> key:value ...")
 
-    tokens = []
-    current = ""
-    in_quotes = False
-    quote_char = None
+    kv_pairs = {}
+    pattern = r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)$'
 
-    for ch in values_str:
-        if ch in ('"', "'") and not in_quotes:
-            in_quotes = True
-            quote_char = ch
-            continue
-        elif ch == quote_char and in_quotes:
-            in_quotes = False
-            quote_char = None
-            tokens.append(current)
-            current = ""
-            continue
+    for p in pairs:
+        m = re.match(pattern, p)
+        if not m:
+            raise ValueError(f"Неверная пара '{p}'. Ожидалось key:value")
+        key, raw_val = m.group(1), m.group(2).strip()
+        val = _parse_value(raw_val)
+        kv_pairs[key] = val
 
-        if in_quotes:
-            current += ch
-        else:
-            if ch == ",":
-                if current.strip():
-                    tokens.append(current.strip())
-                current = ""
-            else:
-                current += ch
-
-    if current.strip():
-        tokens.append(current.strip())
-
-    values = [_parse_value(t) for t in tokens]
-    return table_name, values
+    return table_name, kv_pairs
 
 
-def parse_select(args: list) -> tuple:
-    # Ожидаем: select from <table> [where <col> = <val>]
+def _parse_value(raw: str) -> Any:
+    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+        return raw[1:-1]
+
+    if raw.lower() == "true":
+        return True
+    if raw.lower() == "false":
+        return False
+
+    try:
+        return int(raw)
+    except ValueError:
+        pass
+
+    return raw
+
+
+def parse_select(args: List[str]) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
     if len(args) < 3 or args[1] != "from":
-        raise ValueError("Некорректный синтаксис SELECT. Используйте: select from table [where col = val]")
+        raise ValueError("Неверный синтаксис SELECT. Формат: select from <table> [where key:value]")
 
     table_name = args[2]
     where_clause = None
 
-    where_index = None
-    for i, w in enumerate(args):
-        if w == "where":
-            where_index = i
-            break
-
-    if where_index is not None:
-        # where <col> = <val>
-        if where_index + 2 >= len(args) or args[where_index + 1] != "=":
-            raise ValueError("Некорректное условие WHERE. Используйте: where col = val")
-        col = args[where_index - 1]  # это колонка
-        val = args[where_index + 2]  # это значение
-        where_clause = {col: _parse_value(val)}
+    if len(args) >= 5 and args[3] == "where":
+        where_part = args[4]
+        if ":" not in where_part:
+            raise ValueError("Неверный формат условия WHERE. Ожидалось key:value")
+        k, v_raw = where_part.split(":", 1)
+        v = _parse_value(v_raw)
+        where_clause = {k: v}
 
     return table_name, where_clause
 
 
-def parse_update(args: list) -> tuple:
-    # update <table> set <col> = <val> where <col2> = <val2>
-    # Пример: update users set age = 26 where name = Alice
-    if len(args) < 8 or args[2] != "set" or args[4] != "=" or args[6] != "where" or args[8] != "=":
-        raise ValueError("Некорректный синтаксис UPDATE. Используйте: update table set col = val where col = val")
+def parse_update(args: List[str]) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
+    if len(args) < 6 or args[2] != "set":
+        raise ValueError("Неверный синтаксис UPDATE. Формат: update <table> set key:value ... where key:value")
 
     table_name = args[1]
-    set_col = args[3]
-    set_val = _parse_value(args[5])
-    where_col = args[7]
-    where_val = _parse_value(args[9])
 
-    return table_name, {set_col: set_val}, {where_col: where_val}
+    try:
+        where_idx = args.index("where")
+    except ValueError:
+        raise ValueError("Отсутствует условие WHERE в UPDATE")
+
+    set_parts = args[3:where_idx]
+    where_part = args[where_idx + 1]
+
+    if ":" not in where_part:
+        raise ValueError("Неверный формат WHERE. Ожидалось key:value")
+    k, v_raw = where_part.split(":", 1)
+    where_val = _parse_value(v_raw)
+    where_values = {k: where_val}
+
+    set_values = {}
+    for p in set_parts:
+        if ":" not in p:
+            raise ValueError(f"Неверная пара в SET: '{p}'")
+        k, v_raw = p.split(":", 1)
+        set_values[k] = _parse_value(v_raw)
+
+    return table_name, set_values, where_values
 
 
-def parse_delete(args: list) -> tuple:
-    # delete from <table> where <col> = <val>
-    if len(args) < 6 or args[1] != "from" or args[3] != "where" or args[5] != "=":
-        raise ValueError("Некорректный синтаксис DELETE. Используйте: delete from table where col = val")
+def parse_delete(args: List[str]) -> Tuple[str, Dict[str, Any]]:
+    if len(args) < 5 or args[1] != "from" or args[3] != "where":
+        raise ValueError("Неверный синтаксис DELETE. Формат: delete from <table> where key:value")
 
     table_name = args[2]
-    col = args[4]
-    val = _parse_value(args[6])
+    where_part = args[4]
 
-    return table_name, {col: val}
+    if ":" not in where_part:
+        raise ValueError("Неверный формат WHERE. Ожидалось key:value")
+    k, v_raw = where_part.split(":", 1)
+    where_val = _parse_value(v_raw)
+
+    return table_name, {k: where_val}

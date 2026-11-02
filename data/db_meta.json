@@ -5,5 +5,14 @@
       "age": "int"
     },
     "indexes": []
+  },
+  "products": {
+    "schema": {
+      "ID": "int",
+      "name": "str",
+      "price_cents": "int"
+    },
+    "indexes": [],
+    "next_id": 2
   }
 }
