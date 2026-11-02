@@ -1,4 +1,6 @@
+import os
 from typing import Any, Dict, List, Optional
+
 from .constants import VALID_TYPES
 from .utils import load_metadata, save_metadata, load_table_data, save_table_data
 
@@ -40,7 +42,7 @@ def select_rows(table_name: str, where_clause: Optional[Dict[str, Any]] = None) 
         return rows
 
     col, expected_val = next(iter(where_clause.items()))
-    # Для MVP: фильтр по первой колонке. Позже сделаем по имени колонки
+    # Для MVP: фильтр по первой колонке.
     filtered = [row for row in rows if len(row) > 0 and row[0] == expected_val]
     return filtered
 
@@ -116,3 +118,22 @@ def delete_rows(table_name: str, where: Dict[str, Any]) -> str:
         save_table_data(table_name, filtered_data)
 
     return f"Удалено строк: {deleted_count}"
+
+
+def drop_table(table_name: str) -> str:
+    metadata = load_metadata()
+
+    if table_name not in metadata:
+        return f"Ошибка: Таблица '{table_name}' не существует."
+
+    # Удаляем запись из метаданных
+    del metadata[table_name]
+    save_metadata(metadata)
+
+    # Удаляем файл с данными, если он есть
+    data_dir = "data"
+    file_path = os.path.join(data_dir, f"{table_name}.json")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    return f"Таблица '{table_name}' успешно удалена."

@@ -1,7 +1,6 @@
-import sys
 from .utils import ensure_data_dir, load_metadata
 from .parser import parse_insert, parse_select, parse_update, parse_delete
-from .core import create_table, insert_row, select_rows, update_rows, delete_rows
+from .core import create_table, insert_row, select_rows, update_rows, delete_rows, drop_table
 from prettytable import PrettyTable
 
 
@@ -14,6 +13,7 @@ def main():
             cmd = input("> ").strip()
             if not cmd:
                 continue
+            
             if cmd.lower() == "exit":
                 print("Bye!")
                 break
@@ -21,14 +21,28 @@ def main():
             args = cmd.split()
             command = args[0].lower()
 
-            if command == "create" and len(args) >= 4 and args[1] == "table":
-                table_name = args[2]
-                schema_str = " ".join(args[3:])
+            # ВАЖНО: здесь начинается главный if, без него elif не работает!
+            if command == "create_table":
+                if len(args) < 3:
+                    print("Ошибка: недостаточно аргументов. Формат: create_table <имя> <col:type> ...")
+                    continue
+
+                table_name = args[1]
+                schema_str = " ".join(args[2:])
                 schema = {}
+                
                 for part in schema_str.split():
                     if ":" in part:
                         col, dtype = part.split(":", 1)
                         schema[col] = dtype
+                    else:
+                        print(f"Ошибка: неверный формат колонки '{part}'. Ожидалось col:type")
+                        continue
+
+                if not schema:
+                    print("Ошибка: не удалось распознать ни одной колонки в формате col:type")
+                    continue
+
                 result = create_table(table_name, schema)
                 print(result)
 
@@ -54,6 +68,11 @@ def main():
                         continue
 
                     metadata = load_metadata()
+                    # Защита на случай, если метаданные пусты
+                    if not metadata or table_name not in metadata:
+                        print("Метаданные таблицы недоступны.")
+                        continue
+                        
                     schema = metadata[table_name]["schema"]
                     headers = list(schema.keys())
 
@@ -96,8 +115,26 @@ def main():
                         t.add_row([table_name, cols])
                     print(t)
 
+            elif command == "drop_table":
+                if len(args) < 2:
+                    print("Ошибка: укажите имя таблицы. Формат: drop_table <имя>")
+                    continue
+                
+                table_name = args[1]
+                result = drop_table(table_name)
+                print(result)
+
+            elif command == "help":
+                print("***Процесс работы с таблицей***")
+                print("Функции:")
+                print("<command> create_table <имя_таблицы> <столбец1:тип> <столбец2:тип> .. - создать таблицу")
+                print("<command> list_tables - показать список всех таблиц")
+                print("<command> drop_table <имя_таблицы> - удалить таблицу")
+                print("<command> exit - выход из программы")
+                print("<command> help - справочная информация")
+
             else:
-                print("Неизвестная команда. Доступные: create, insert, select, update, delete, list_tables.")
+                print("Неизвестная команда. Доступные: create_table, insert, select, update, delete, list_tables, drop_table, help, exit.")
 
         except EOFError:
             break
