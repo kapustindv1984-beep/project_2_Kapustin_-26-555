@@ -1,3 +1,3 @@
-META_FILE = "db_meta.json"
 DATA_DIR = "data"
-VALID_TYPES = {"int", "str", "bool"}
+META_FILE = "db_meta.json"
+VALID_TYPES = {"str", "int", "bool"}

@@ -1,6 +1,7 @@
-from .utils import ensure_data_dir, load_metadata
-from .parser import parse_insert, parse_select, parse_update, parse_delete
+from typing import Optional
 from .core import create_table, insert_row, select_rows, update_rows, delete_rows, drop_table
+from .utils import ensure_data_dir, load_metadata, load_table_data  
+from .parser import parse_insert, parse_select, parse_update, parse_delete
 from prettytable import PrettyTable
 
 

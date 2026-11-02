@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from .constants import VALID_TYPES
 from .utils import load_metadata, save_metadata, load_table_data, save_table_data
 import os

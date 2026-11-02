@@ -27,7 +27,7 @@ def load_table_data(table_name):
     _ensure_dirs()
     path = Path(DATA_DIR) / f"{table_name}.json"
     if not path.exists():
-        return 
+        return []
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
