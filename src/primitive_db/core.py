@@ -10,7 +10,7 @@ def create_table(table_name: str, schema: Dict[str, str]) -> bool:
     if table_name in metadata:
         return False
     
-    metadata[table_name] = {"schema": schema, "indexes": }
+    metadata[table_name] = {"schema": schema, "indexes": []}
     return save_metadata(metadata)
 
 def insert_row(table_name: str, row: Dict[str, Any]) -> bool:
