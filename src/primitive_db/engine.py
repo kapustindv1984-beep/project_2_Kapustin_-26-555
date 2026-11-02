@@ -83,8 +83,21 @@ def main():
                 except ValueError as e:
                     print(f"Error: {e}")
             
+            elif command == "list_tables":
+                metadata = load_metadata()
+                if not metadata:
+                    print("Таблиц пока нет.")
+                else:
+                    t = PrettyTable()
+                    t.align = "l"
+                    t.field_names = ["Имя таблицы", "Колонки"]
+                    for table_name, info in metadata.items():
+                        cols = ", ".join(f"{col}:{dtype}" for col, dtype in info["schema"].items())
+                        t.add_row([table_name, cols])
+                    print(t)
+
             else:
-                print("Неизвестная команда. Доступные: create, insert, select, update, delete.")
+                print("Неизвестная команда. Доступные: create, insert, select, update, delete, list_tables.")
 
         except EOFError:
             break
