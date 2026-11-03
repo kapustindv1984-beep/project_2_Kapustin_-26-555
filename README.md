@@ -29,7 +29,7 @@ poetry run database
 
 ## Демонстрация работы
 
-Ниже — запись полного сценария работы с базой данных: от создания таблицы до удаления.
+Ниже - запись полного сценария работы с базой данных: от создания таблицы до удаления.
 
 <a href="https://asciinema.org/a/zwqTeuQS9dXyGBpA"><img src="https://asciinema.org/a/zwqTeuQS9dXyGBpA.svg" alt="Демонстрация работы primitive-db"></a>
 
@@ -41,7 +41,6 @@ poetry run database
 - обновление и удаление данных;
 - удаление таблицы с подтверждением;
 - завершение работы.
-
 
 ## Тесты
 
@@ -65,13 +64,13 @@ poetry run ruff check .
 
 ## Структура проекта
 
-- `src/primitive_db/main.py` — точка входа
-- `src/primitive_db/engine.py` — основной цикл и обработка ввода
-- `src/primitive_db/core.py` — бизнес-логика (CRUD, валидация)
-- `src/primitive_db/utils.py` — работа с файловой системой
-- `src/primitive_db/parser.py` — разбор команд
-- `src/primitive_db/decorators.py` — декораторы
-- `src/primitive_db/constants.py` — константы
+- `src/primitive_db/main.py` - точка входа
+- `src/primitive_db/engine.py` - основной цикл и обработка ввода
+- `src/primitive_db/core.py` - бизнес-логика (CRUD, валидация)
+- `src/primitive_db/utils.py` - работа с файловой системой
+- `src/primitive_db/parser.py` - разбор команд
+- `src/primitive_db/decorators.py` - декораторы
+- `src/primitive_db/constants.py` - константы
 
 ## Особенности реализации
 
