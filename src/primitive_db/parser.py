@@ -1,42 +1,75 @@
 import re
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Any
 
 
 def _parse_value(raw: str) -> Any:
+    # 1. Убираем внешние пробелы
     raw = raw.strip()
-    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
-        return raw[1:-1]
+    
+    # 2. Убираем кавычки
+    if len(raw) >= 2 and ((raw.startswith('"') and raw.endswith('"')) or 
+                          (raw.startswith("'") and raw.endswith("'"))):
+        raw = raw[1:-1]
+        # После удаления кавычек снова убираем пробелы
+        raw = raw.strip()
+
+    # 3. Булевы значения
     if raw.lower() == "true":
         return True
     if raw.lower() == "false":
         return False
+
+    # 4. Попытка превратить в число
     try:
-        return int(raw)
+        # Проверяем, что строка состоит только из цифр
+        if raw.lstrip('-').isdigit():
+            return int(raw)
     except ValueError:
         pass
+
+    # 5. Возвращаем как строку
     return raw
 
 
-def parse_insert(args: List[str]) -> Tuple[str, List[Any]]:
-    if len(args) < 5 or args[1] != "into" or args[3] != "values":
-        raise ValueError("Неверный синтаксис INSERT. Формат: insert into <таблица> values (val1, val2, ...)")
+def parse_insert(args):
+    if len(args) < 5 or args[1].lower() != "into" or args[3].lower() != "values":
+        raise ValueError("Неверный формат INSERT. Ожидалось: insert into <таблица> values (...)")
+
     table_name = args[2]
-    values_str = args[4]
-    if not values_str.startswith("(") or not values_str.endswith(")"):
-        raise ValueError("Значения должны быть в скобках: values (...)")
-    values_content = values_str[1:-1].strip()
-    if not values_content:
-        return table_name, []
-    raw_values = [v.strip() for v in values_content.split(",")]
+    values_part = " ".join(args[4:])
+
+    match = re.search(r"\((.*)\)", values_part)
+    if not match:
+        raise ValueError("Не удалось найти значения в скобках. Ожидался формат: values (v1, v2, ...)")
+
+    raw_values = match.group(1).strip()
+    if not raw_values:
+        raise ValueError("Пустые значения в скобках.")
+
     parsed_values = []
-    for v in raw_values:
-        if not v:
+    for val in raw_values.split(","):
+        val = val.strip()
+        if not val:
             continue
-        parsed_values.append(_parse_value(v))
+
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            val = val[1:-1]
+        else:
+            if val.lstrip("-").isdigit():
+                val = int(val)
+            elif val.lower() == "true":
+                val = True
+            elif val.lower() == "false":
+                val = False
+
+        parsed_values.append(val)
+
+    if not parsed_values:
+        raise ValueError("Не найдено ни одного значения.")
+
     return table_name, parsed_values
 
-
-def _parse_condition(cond_str: str) -> Dict[str, Any]:
+def _parse_condition(cond_str: str) -> dict[str, Any]:
     match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$', cond_str.strip())
     if not match:
         raise ValueError(f"Неверный формат условия: '{cond_str}'. Ожидалось col = value")
@@ -45,7 +78,7 @@ def _parse_condition(cond_str: str) -> Dict[str, Any]:
     return {col: val}
 
 
-def parse_select(args: List[str]) -> Tuple[str, Optional[Dict[str, Any]]]:
+def parse_select(args: list[str]) -> tuple[str, dict[str, Any] | None]:
     if len(args) < 3 or args[1] != "from":
         raise ValueError("Неверный синтаксис SELECT. Формат: select from <таблица> [where col = value]")
     table_name = args[2]
@@ -55,7 +88,7 @@ def parse_select(args: List[str]) -> Tuple[str, Optional[Dict[str, Any]]]:
     return table_name, where_clause
 
 
-def parse_update(args: List[str]) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
+def parse_update(args: list[str]) -> tuple[str, dict[str, Any], dict[str, Any]]:
     if len(args) < 6 or args[2] != "set" or "where" not in args:
         raise ValueError("Неверный синтаксис UPDATE. Формат: update <таблица> set col = val where col = val")
     table_name = args[1]
@@ -72,7 +105,7 @@ def parse_update(args: List[str]) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     return table_name, set_values, where_values
 
 
-def parse_delete(args: List[str]) -> Tuple[str, Dict[str, Any]]:
+def parse_delete(args: list[str]) -> tuple[str, dict[str, Any]]:
     if len(args) < 5 or args[1] != "from" or args[3] != "where":
         raise ValueError("Неверный синтаксис DELETE. Формат: delete from <таблица> where col = val")
     table_name = args[2]
