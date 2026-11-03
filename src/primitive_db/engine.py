@@ -14,6 +14,7 @@ from .core import (
 from .parser import parse_delete, parse_insert, parse_select, parse_update
 from .utils import ensure_data_dir, load_metadata, load_table_data
 
+
 def main():
     try:
         ensure_data_dir()
@@ -52,55 +53,43 @@ def main():
                         print(result)
 
                 elif command == "insert":
-                    try:
-                        table_name, values = parse_insert(args)
-                        result = insert_row(table_name, values)
-                        if result is not None:
-                            print(result)
-                    except ValueError as e:
-                        print(f"Error: {e}")
+                    table_name, values = parse_insert(args)
+                    result = insert_row(table_name, values)
+                    if result is not None:
+                        print(result)
 
                 elif command == "select":
-                    try:
-                        table_name, where_clause = parse_select(args)
-                        rows = select_rows(table_name, where_clause)
-                        if rows is None:
-                            continue
-                        if len(rows) == 0:
-                            print("Пусто.")
-                            continue
-                        metadata = load_metadata()
-                        if not metadata or table_name not in metadata:
-                            print("Метаданные таблицы недоступны.")
-                            continue
-                        schema = metadata[table_name]["schema"]
-                        headers = list(schema.keys())
-                        t = PrettyTable()
-                        t.align = "l"
-                        t.field_names = headers
-                        for row in rows:
-                            t.add_row(row)
-                        print(t)
-                    except ValueError as e:
-                        print(f"Error: {e}")
+                    table_name, where_clause = parse_select(args)
+                    rows = select_rows(table_name, where_clause)
+                    if rows is None:
+                        continue
+                    if len(rows) == 0:
+                        print("Пусто.")
+                        continue
+                    metadata = load_metadata()
+                    if not metadata or table_name not in metadata:
+                        print("Метаданные таблицы недоступны.")
+                        continue
+                    schema = metadata[table_name]["schema"]
+                    headers = list(schema.keys())
+                    t = PrettyTable()
+                    t.align = "l"
+                    t.field_names = headers
+                    for row in rows:
+                        t.add_row(row)
+                    print(t)
 
                 elif command == "update":
-                    try:
-                        table_name, set_data, where_data = parse_update(args)
-                        result = update_rows(table_name, set_data, where_data)
-                        if result is not None:
-                            print(result)
-                    except ValueError as e:
-                        print(f"Error: {e}")
+                    table_name, set_data, where_data = parse_update(args)
+                    result = update_rows(table_name, set_data, where_data)
+                    if result is not None:
+                        print(result)
 
                 elif command == "delete":
-                    try:
-                        table_name, where_data = parse_delete(args)
-                        result = delete_rows(table_name, where_data)
-                        if result is not None:
-                            print(result)
-                    except ValueError as e:
-                        print(f"Error: {e}")
+                    table_name, where_data = parse_delete(args)
+                    result = delete_rows(table_name, where_data)
+                    if result is not None:
+                        print(result)
 
                 elif command == "list_tables":
                     metadata = load_metadata()
@@ -163,6 +152,10 @@ def main():
             except KeyboardInterrupt:
                 print("\nExiting...")
                 break
+            except KeyError as e:
+                print(e.args[0] if e.args else "Ошибка: ключ не найден.")
+            except Exception as e:  # noqa: BLE001
+                print(e)
     except Exception:  # noqa: BLE001
         print("FATAL ERROR inside main:")
         traceback.print_exc()
